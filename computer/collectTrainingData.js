@@ -1,48 +1,62 @@
 const fs = require('fs');
+const {app, BrowserWindow} = require('electron');
 const socket = { // TODO: found, what is the socket?
-  socket(){
+  socket() {
     return {
-      bind(){},
-      listen(){},
-      accept(){
+      bind() {
+      },
+      listen() {
+      },
+      accept() {
         return [
           {
-            makefile(){
+            makefile() {
               return {
-                read(value){
+                read(value) {
                   return new Int8Array(value)
                 },
-                close(){},
+                close() {
+                },
               }
             }
           }
         ]
       },
-      close(){}
+      close() {
+      }
     }
   },
-
 }
 const serial = { // TODO: serial port connection
-  Serial(port, baud, timeout){}
+  Serial(port, baud, timeout) {
+  }
 }
 
 const pygame = {
-  init(){},
-  display: {set_mode(){}}
+  init() {
+  },
+  display: {
+    set_mode() {
+    }
+  }
 }
 
 const np = require('mathjs');
 
 const cv2 = { // TODO: maybe computer vision lib
-  getTickCount(){},
-  getTickFrequency(){}
+  getTickCount() {
+  },
+  getTickFrequency() {
+  }
 }
 
-Int8Array.prototype.find = () => {}
+const cv = require('opencv4nodejs')
+
+Int8Array.prototype.find = () => {
+}
 
 class CollectTrainingData {
-  constructor(host, port, serial_port, input_size){
+  constructor(host, port, serial_port, input_size) {
     this.server_socket = socket.socket()
     this.server_socket.bind((host, port))
     this.server_socket.listen(0)
@@ -59,16 +73,47 @@ class CollectTrainingData {
     // create labels
     this.k = np.zeros((4, 4), 'dense')
 
-    for(let i in [0,1,2,3]){
-      this.k[i,i] = 1
+    for (let i in [0, 1, 2, 3]) {
+      this.k[i, i] = 1
     }
 
-    pygame.init()
-    pygame.display.set_mode((250, 250))
+    this.win = null
 
   }
 
-  collect(){
+  async init(callback) {
+    // do something async and call the callback:
+    return callback.bind(this)();
+  }
+
+  createWindow(resolve) {
+    // Create the browser window.
+    this.win = new BrowserWindow({
+      width: 800,
+      height: 600,
+      webPreferences: {
+        nodeIntegration: true
+      }
+    })
+    console.log('createWindow')
+
+    // and load the index.html of the app.
+    this.win.loadFile('index.html')
+
+    // Open the DevTools.
+    this.win.webContents.openDevTools()
+
+    // Emitted when the window is closed.
+    this.win.on('closed', () => {
+      // Dereference the window object, usually you would store windows
+      // in an array if your app supports multi windows, this is the time
+      // when you should delete the corresponding element.
+      this.win = null
+    })
+    resolve()
+  }
+
+  collect() {
     const saved_frame = 0
     const total_frame = 0
 
@@ -84,7 +129,7 @@ class CollectTrainingData {
     try {
       let stream_bytes = new Int8Array([]);
       const frame = 1
-      while (this.send_inst){
+      while (this.send_inst) {
         stream_bytes = this.connection.read(1024)
         const first = stream_bytes.find('\xff\xd8')
         const last = stream_bytes.find('\xff\xd9')
@@ -93,12 +138,12 @@ class CollectTrainingData {
         // save data as a numpy file
         const file_name = new Date().toISOString()
         const directory = "./training_data"
-        if ( !fs.existsSync(directory)) {
+        if (!fs.existsSync(directory)) {
           fs.mkdirSync(directory)
         }
         try {
-          fs.writeFile(directory + '/' + file_name + '.json', JSON.stringify(X), function(err) {
-            if(err) {
+          fs.writeFile(directory + '/' + file_name + '.json', JSON.stringify(X), function (err) {
+            if (err) {
               console.error(err);
               throw err
             }
@@ -112,13 +157,13 @@ class CollectTrainingData {
 
         const end = cv2.getTickCount()
         // calculate streaming duration
-        console.log("Streaming duration: , %.2fs",  ((end - start) / cv2.getTickFrequency()))
+        // console.log("Streaming duration: , %.2fs",  ((end - start) / cv2.getTickFrequency()))
 
-        console.log(X.shape)
-        console.log(y.shape)
-        console.log("Total frame: ", total_frame)
-        console.log("Saved frame: ", saved_frame)
-        console.log("Dropped frame: ", total_frame - saved_frame)
+        // console.log(X.shape)
+        // console.log(y.shape)
+        // console.log("Total frame: ", total_frame)
+        // console.log("Saved frame: ", saved_frame)
+        // console.log("Dropped frame: ", total_frame - saved_frame)
       }
     } finally {
       this.connection.close()
@@ -129,19 +174,32 @@ class CollectTrainingData {
 
 
 // // if (__name__ == '__main__'){
+const main = async () => {
+  console.log('Main process start')
 
 // host, port
-const h = "192.168.1.100"
-const p = 8000
+  const h = "192.168.1.100"
+  const p = 8000
 
 // serial port
-const sp = "/dev/tty.usbmodem1421"
+  const sp = "/dev/tty.usbmodem1421"
 
 // vector size, half of the image
-const s = 120 * 320
+  const s = 120 * 320
 
-const ctd = new CollectTrainingData(h, p, sp, s)
-ctd.collect()
+  const ctd = new CollectTrainingData(h, p, sp, s)
+  await ctd.init(async function() {
+    return new Promise((resolve) => {
+      app.on('ready', () => {
+        console.log('ready event')
+        this.createWindow(resolve)
+      })
+    })
+  })
+  ctd.collect()
+}
+
+main();
 
 /*
 import numpy as np

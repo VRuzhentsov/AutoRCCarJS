@@ -9,6 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "mathjs": "^6.2.1"
+    "electron": "^6.0.9",
+    "mathjs": "^6.2.1",
+    "opencv4nodejs": "^5.2.0"
   }
 }
