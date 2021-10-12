@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "electron": "^6.0.9",
+    "electron": "^11.5.0",
     "mathjs": "^6.2.1",
     "opencv4nodejs": "^5.2.0"
   }
